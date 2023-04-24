@@ -1,3 +1,4 @@
+import axios from "axios";
 import { useEffect, useState } from "react";
 import Web3 from "web3";
 import {
@@ -8,13 +9,14 @@ import {
 } from "./web3.config";
 
 // 프로바이더 추가 -> 마치 메마에서 다른 생태계 네트워크 추가하는 것과 같음
-const web3 = new Web3("https://rpc-mumbai.maticvigil.com");
+const web3 = new Web3(window.ethereum);
 const contract = new web3.eth.Contract(TOKEN_ABI, TOKEN_CONTRACT_ADDRESS); // ABI와 컨트랙트 주소 연결
 const NFTcontract = new web3.eth.Contract(NFT_ABI, NFT_CONTRACT_ADDRESS); // ABI와 컨트랙트 주소 연결
 
 function App() {
   const [account, setAccount] = useState("");
   const [mybalance, setMybalance] = useState();
+  const [nftMetadata, setNftMetadata] = useState();
 
   // 메타마스크 연결
   const onClickAccount = async () => {
@@ -51,15 +53,35 @@ function App() {
   // 민팅
   const onClickMint = async () => {
     try {
-      const result = await NFTcontract.methods
-        .mintNft(
-          "https://gateway.pinata.cloud/ipfs/QmZ5ynCXHF5LyFwehgMxQQuxrq3x1hs7zcgo1bQ2QsRCmH"
-        )
-        .send({
-          from: account,
-        });
+      const uri =
+        "https://gateway.pinata.cloud/ipfs/QmXV6PgzzfBJxvhfp6PeXB7H7XktPCBcKCuXJr1uUvndwe";
 
-      console.log(result);
+      // NFT mint
+      const result = await NFTcontract.methods.mintNft(uri).send({
+        from: account,
+      });
+
+      if (!result.status) return;
+
+      // // 이 지갑이 갖고있는 nft갯수 조회
+      // const balanceOf = await NFTcontract.methods.balanceOf(account).call();
+      // // 문자열로 들어옴
+
+      // // 현재까지 발행된 NFT 갯수 조회
+      // const tokenOfOwnerByIndex = await NFTcontract.methods
+      //   .tokenOfOwnerByIndex(account, parseInt(balanceOf) - 1)
+      //   .call();
+
+      // // 방금 생성한 NFT의 메타데이터(json)을 가져옴 (사실 mintNft 와 같음)
+      // const tokenURI = await NFTcontract.methods
+      //   .tokenURI(tokenOfOwnerByIndex)
+      //   .call();
+
+      // // axios를 통해 메타데이터를 response에 저장
+      // const response = await axios.get(tokenURI);
+      const response = await axios.get(uri);
+
+      setNftMetadata(response.data);
     } catch (error) {
       console.error(error);
     }
@@ -84,6 +106,23 @@ function App() {
             )}
           </div>
           <div className="flex items-center mt-4">
+            {nftMetadata && (
+              <div className="m-4">
+                <img src={nftMetadata.image} alt="NFT" />
+                <div>Name: {nftMetadata.name}</div>
+                <div>description: {nftMetadata.description}</div>
+                <div>
+                  {nftMetadata.attributes.map((v, i) => {
+                    return (
+                      <div key={i}>
+                        <span>{v.trait_type} : </span>
+                        <span>{v.value}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <button className="m-8 btn-style" onClick={onClickMint}>
               민팅
             </button>
